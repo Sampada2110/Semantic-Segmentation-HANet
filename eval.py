@@ -26,6 +26,7 @@ import transforms.transforms as extended_transforms
 
 from config import assert_and_infer_cfg
 from datasets import cityscapes
+from datasets import acdc
 from optimizer import restore_snapshot
 
 from utils.my_data_parallel import MyDataParallel
@@ -482,6 +483,34 @@ def setup_loader():
                                                 eval_scales=eval_scales,
                                                 eval_flip=not args.no_flip,
                                                 )
+    elif args.dataset == 'acdc':
+        args.dataset_cls = acdc
+        eval_mode_pooling = False
+        eval_scales = None
+        if args.inference_mode == 'pooling':
+            eval_mode_pooling = True
+            eval_scales = args.scales
+        print("pos_rfactor", args.pos_rfactor)
+        if args.pos_rfactor > 0:
+            test_set = args.dataset_cls.AcdcWithPos(args.mode, args.split, 0,
+                                                transform=val_input_transform,
+                                                target_transform=target_transform,
+                                                cv_split=0,#args.cv_split,
+                                                eval_mode=eval_mode_pooling,
+                                                eval_scales=eval_scales,
+                                                eval_flip=not args.no_flip,
+                                                pos_rfactor=args.pos_rfactor
+                                                )
+        else:
+            test_set = args.dataset_cls.Acdc(args.mode, args.split, 0,
+                                                transform=val_input_transform,
+                                                target_transform=target_transform,
+                                                cv_split=0,#args.cv_split,
+                                                eval_mode=eval_mode_pooling,
+                                                eval_scales=eval_scales,
+                                                eval_flip=not args.no_flip,
+                                                )
+
     else:
         raise NameError('-------------Not Supported Currently-------------')
 
@@ -558,7 +587,7 @@ class RunEval():
         return e_x / e_x.sum(axis=0)  # only difference
 
     def inf(self, imgs, img_names, gt, inference, net, scales, pbar, base_img, pos):
-
+        
         ######################################################################
         # Run inference
         ######################################################################
@@ -577,7 +606,9 @@ class RunEval():
         prediction_pre_argmax_collection = inference(net, img, scales, pos)
         # print(len(prediction_pre_argmax_collection))
         # print(prediction_pre_argmax_collection[0].shape)
-
+        
+        print(f"Before Prediction shape: {prediction_pre_argmax_collection[0].shape}")
+        print(f"Before Ground truth shape: {gt[0].shape}")
         if self.inference_mode == 'pooling':
             prediction = prediction_pre_argmax_collection
             prediction = np.concatenate(prediction, axis=0)
@@ -586,6 +617,9 @@ class RunEval():
             prediction = np.argmax(prediction_pre_argmax, axis=0)
 
         if self.metrics:
+            print(f"Prediction shape: {len(prediction)}")
+            print(f"Prediction shape: {prediction.flatten().shape}")
+            print(f"Ground truth shape: {gt.cpu().numpy().flatten().shape}")
             self.hist += fast_hist(prediction.flatten(), gt.cpu().numpy().flatten(),
                                    self.dataset_cls.num_classes)
             iou_w = round(np.nanmean(per_class_iu(self.hist)) * 100, 2)
@@ -744,6 +778,7 @@ def main():
 
     # Run Inference!
     pbar = tqdm(test_loader, desc='eval {}'.format(args.split), smoothing=1.0)
+    
     for iteration, data in enumerate(pbar):
         #if iteration < 800:
         #    continue
@@ -773,6 +808,9 @@ def main():
         # print("Flops", flops, params)
         # exit()
 ################### Profile
+        print(len(imgs))
+        print(gt.shape)
+        print(img_names)
         runner.inf(imgs, img_names, gt, inference, net, scales, pbar, base_img, pos=(pos_h, pos_w))
         if iteration > 5 and args.test_mode:
             break

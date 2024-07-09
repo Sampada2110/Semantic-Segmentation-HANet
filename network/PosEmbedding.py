@@ -68,7 +68,6 @@ class PosEncoding1D(nn.Module):
         pos_h = pos_h//self.pos_rfactor
         pos_h = pos_h.index_select(2, self.sel_index).unsqueeze(1).squeeze(3) # B X 1 X H
         pos_h = nn.functional.interpolate(pos_h.float(), size=x.shape[2], mode='nearest').long() # B X 1 X 48
-
         if self.training is True and self.pos_noise > 0.0:
             #pos_h = pos_h + (self.noise.sample(pos_h.shape).squeeze(3).cuda()//1).long()
             pos_h = pos_h + torch.clamp((self.noise.sample(pos_h.shape).squeeze(3).cuda()//1).long(), 
@@ -76,8 +75,7 @@ class PosEncoding1D(nn.Module):
             pos_h = torch.clamp(pos_h, min=self.min, max=self.max)
             #pos_h = torch.where(pos_h < self.min_tensor, self.min_tensor, pos_h)
             #pos_h = torch.where(pos_h > self.max_tensor, self.max_tensor, pos_h)
-
-        pos_h = self.pos_layer(pos_h).transpose(1,3).squeeze(3)   # B X 1 X 48 X 80 > B X 80 X 48 X 1 
+        pos_h = self.pos_layer(pos_h.long()).transpose(1,3).squeeze(3)   # B X 1 X 48 X 80 > B X 80 X 48 X 1 
         x = x + pos_h
         if return_posmap:
             return x, self.pos_layer.weight # 33 X 80

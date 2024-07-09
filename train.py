@@ -175,6 +175,7 @@ args.world_size = 1
 # Test Mode run two epochs with a few iterations of training and val
 if args.test_mode:
     args.max_epoch = 2
+    args.max_iter = 10
 
 if 'WORLD_SIZE' in os.environ:
     # args.apex = int(os.environ['WORLD_SIZE']) > 1
@@ -261,17 +262,18 @@ def main():
             validate(val_loader, net, criterion_val, optim, scheduler, epoch, writer, i, optim_at, scheduler_at)
         else:
             validate(val_loader, net, criterion_val, optim, scheduler, epoch, writer, i)
-
+    print("args.max_iter:",args.max_iter) 
     while i < args.max_iter:
         # Update EPOCH CTR
         cfg.immutable(False)
         cfg.ITER = i
         cfg.immutable(True)
-
+        print("Current epoch:",epoch)
+        print("Current Iteration:",i)
         if (args.use_hanet and args.hanet_lr > 0.0):
             # validate(val_loader, net, criterion_val, optim, epoch, writer, i, optim_at)
             i = train(train_loader, net, optim, epoch, writer, scheduler, args.max_iter, optim_at, scheduler_at)
-            train_loader.sampler.set_epoch(epoch + 1)
+            #train_loader.sampler.set_epoch(epoch + 1)
             validate(val_loader, net, criterion_val, optim, scheduler, epoch+1, writer, i, optim_at, scheduler_at)
         else:
             # validate(val_loader, net, criterion_val, optim, epoch, writer, i)
@@ -283,7 +285,7 @@ def main():
             if epoch >= args.max_cu_epoch:
                 train_obj.build_epoch(cut=True)
                 # if args.apex:
-                train_loader.sampler.set_num_samples()
+                #train_loader.sampler.set_num_samples()
             else:
                 train_obj.build_epoch()
         epoch += 1
@@ -329,7 +331,6 @@ def train(train_loader, net, optim, curr_epoch, writer, scheduler, max_iter, opt
         batch_pixel_size = inputs.size(0) * inputs.size(2) * inputs.size(3)
 
         inputs, gts = inputs.cuda(), gts.cuda()
-
         optim.zero_grad()
         if optim_at is not None:
             optim_at.zero_grad()
@@ -440,6 +441,7 @@ def validate(val_loader, net, criterion, optim, scheduler, curr_epoch, writer, c
     for val_idx, data in enumerate(val_loader):
         # input        = torch.Size([1, 3, 713, 713])
         # gt_image           = torch.Size([1, 713, 713])
+        print("Current val_idx:",val_idx)
         if args.no_pos_dataset:
             inputs, gt_image, img_names = data
         elif args.pos_rfactor > 0:
@@ -578,7 +580,7 @@ def visualize_attention(writer, attention_map, iteration, threshold=0):
         attention_map_sb = attention_map_sb[0].transpose(0,1).unsqueeze(0)  # 1 X H X C X 1, 
         attention_map_sb = torch.cat((torch.ones(1, C, C).cuda(), torch.abs(attention_map_sb - 1.0),
                         torch.abs(attention_map_sb - 1.0)), 0)
-        attention_map_sb = vutils.make_grid(attention_map_sb, padding=5, normalize=False, range=(threshold,1))
+        attention_map_sb = vutils.make_grid(attention_map_sb, padding=5, normalize=False)
         writer.add_image(stage + '/Attention/Row-wise-' + str(i), attention_map_sb, iteration)
 
 from threading import Thread

@@ -7,6 +7,7 @@ from datasets import kitti
 from datasets import camvid
 from datasets import bdd100k
 from datasets import gtav
+from datasets import acdc
 
 import torchvision.transforms as standard_transforms
 
@@ -24,6 +25,13 @@ def setup_loaders(args):
 
     if args.dataset == 'cityscapes':
         args.dataset_cls = cityscapes
+        args.train_batch_size = args.bs_mult * args.ngpu
+        if args.bs_mult_val > 0:
+            args.val_batch_size = args.bs_mult_val * args.ngpu
+        else:
+            args.val_batch_size = args.bs_mult * args.ngpu
+    elif args.dataset == 'acdc':
+        args.dataset_cls = acdc
         args.train_batch_size = args.bs_mult * args.ngpu
         if args.bs_mult_val > 0:
             args.val_batch_size = args.bs_mult_val * args.ngpu
@@ -214,6 +222,77 @@ def setup_loaders(args):
                                                 transform=val_input_transform,
                                                 target_transform=target_transform,
                                                 cv_split=args.cv)
+
+    elif args.dataset == 'acdc':
+        city_mode = args.city_mode #'train' ## Can be trainval
+        city_quality = 'fine'
+        if args.class_uniform_pct:
+            if args.coarse_boost_classes:
+                coarse_boost_classes = \
+                    [int(c) for c in args.coarse_boost_classes.split(',')]
+            else:
+                coarse_boost_classes = None
+            
+            if args.pos_rfactor > 0:
+                train_set = args.dataset_cls.AcdcUniformWithPos(
+                    city_quality, city_mode, args.maxSkip,
+                    joint_transform_list=train_joint_transform_list,
+                    transform=train_input_transform,
+                    target_transform=target_train_transform,
+                    target_aux_transform=target_aux_train_transform,
+                    dump_images=args.dump_augmentation_images,
+                    cv_split=args.cv,
+                    class_uniform_pct=args.class_uniform_pct,
+                    class_uniform_tile=args.class_uniform_tile,
+                    test=args.test_mode,
+                    coarse_boost_classes=coarse_boost_classes,
+                    pos_rfactor=args.pos_rfactor)
+            else:
+                train_set = args.dataset_cls.AcdcUniform(
+                    city_quality, city_mode, args.maxSkip,
+                    joint_transform_list=train_joint_transform_list,
+                    transform=train_input_transform,
+                    target_transform=target_train_transform,
+                    target_aux_transform=target_aux_train_transform,
+                    dump_images=args.dump_augmentation_images,
+                    cv_split=args.cv,
+                    class_uniform_pct=args.class_uniform_pct,
+                    class_uniform_tile=args.class_uniform_tile,
+                    test=args.test_mode,
+                    coarse_boost_classes=coarse_boost_classes)
+        else:
+            if args.pos_rfactor > 0:
+                train_set = args.dataset_cls.AcdcWithPos(
+                    city_quality, city_mode, 0, 
+                    joint_transform=train_joint_transform,
+                    transform=train_input_transform,
+                    target_transform=target_train_transform,
+                    target_aux_transform=target_aux_train_transform,
+                    dump_images=args.dump_augmentation_images,
+                    cv_split=args.cv,
+                    pos_rfactor=args.pos_rfactor)
+            else:
+                train_set = args.dataset_cls.Acdc(
+                    city_quality, city_mode, 0, 
+                    joint_transform=train_joint_transform,
+                    transform=train_input_transform,
+                    target_transform=target_train_transform,
+                    target_aux_transform=target_aux_train_transform,
+                    dump_images=args.dump_augmentation_images,
+                    cv_split=args.cv)
+
+        if args.pos_rfactor > 0:
+            val_set = args.dataset_cls.AcdcWithPos('fine', 'val', 0, 
+                                                transform=val_input_transform,
+                                                target_transform=target_transform,
+                                                cv_split=args.cv,
+                                                pos_rfactor=args.pos_rfactor)
+        else:
+            val_set = args.dataset_cls.Acdc('fine', 'val', 0, 
+                                                transform=val_input_transform,
+                                                target_transform=target_transform,
+                                                cv_split=args.cv)
+
 
     elif args.dataset == 'bdd100k':
         bdd_mode = 'train' ## Can be trainval

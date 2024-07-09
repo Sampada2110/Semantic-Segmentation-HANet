@@ -67,6 +67,8 @@ __C.STRICTBORDERCLASS = None
 __C.DATASET = AttrDict()
 #Cityscapes Dir Location
 __C.DATASET.CITYSCAPES_DIR = '/content/Semantic-Segmentation-HANet/datasets/cityscapes'
+#ACDC Dir Location
+__C.DATASET.ACDC_DIR = '/content/Semantic-Segmentation-HANet/datasets/ACDC'
 #SDC Augmented Cityscapes Dir Location
 __C.DATASET.CITYSCAPES_AUG_DIR = ''
 #Mapillary Dataset Dir Location
