@@ -60,8 +60,8 @@ def add_items(items, aug_items, cities, img_path, mask_path, mask_postfix, mode,
             ###### dataset augmentation ############################
             ########################################################
             if mode == "train" and maxSkip > 0:
-                new_img_path = os.path.join(aug_root, 'rgb_anon_trainvaltest_subset', 'rgb_anon')
-                new_mask_path = os.path.join(aug_root, 'gt_trainval_subset', 'gt')
+                new_img_path = os.path.join(aug_root, 'rgb_anon_trainvaltest', 'rgb_anon')
+                new_mask_path = os.path.join(aug_root, 'gt_trainval', 'gt')
                 file_info = it.split("_")
                 cur_seq_id = file_info[-1]
 
@@ -165,9 +165,9 @@ def make_dataset(quality, mode, maxSkip=0, fine_coarse_mult=6, cv_split=0):
                   mask_postfix, mode, maxSkip)
     elif quality == 'fine':
         assert mode in ['train', 'val', 'test', 'trainval']
-        img_dir_name = 'rgb_anon_trainvaltest_subset'
+        img_dir_name = 'rgb_anon_trainvaltest'
         img_path = os.path.join(root, img_dir_name, 'rgb_anon')
-        mask_path = os.path.join(root, 'gt_trainval_subset', 'gt')
+        mask_path = os.path.join(root, 'gt_trainval', 'gt')
 
         mask_postfix = '_gt_labelIds.png'
         cv_splits = make_cv_splits(img_dir_name)
