@@ -7,6 +7,8 @@ import argparse
 import logging
 import os
 import torch
+from torchvision.transforms import v2
+from PIL import Image
 
 from config import cfg, assert_and_infer_cfg
 from utils.misc import AverageMeter, prep_experiment, evaluate_eval, fast_hist
@@ -162,6 +164,8 @@ parser.add_argument('--use_hanet', action='store_true', default=False,
                     help='use hanet')
 parser.add_argument('--pooling', type=str, default='mean',
                     help='pooling methods, average is better than max')
+parser.add_argument('--cutmix', action='store_true', default=False,
+                    help='Use CutMix Augmentation')
 
 
 args = parser.parse_args()
@@ -206,6 +210,33 @@ def main():
         exit()
 
     train_loader, val_loader, train_obj = datasets.setup_loaders(args)
+
+    print("Cutmix flag: ",args.cutmix)
+    if args.cutmix:
+      cutmix = v2.CutMix(num_classes=19)
+      mixup = v2.MixUp(num_classes=19)
+      cutmix_or_mixup = v2.RandomChoice([cutmix, mixup])
+      x=0
+      for batch in train_loader:
+
+        images =  batch[0]
+        labels = torch.tensor([1,2,3,4])
+        print(f"Before CutMix/MixUp: {images.shape = }, {labels.shape = }")
+        cutimages, labels = cutmix_or_mixup(images, labels)
+        print(f"After CutMix/MixUp: {cutimages.shape = }, {labels.shape = }")
+        batch[0] = cutimages
+        destination_folder = "./augmentation"
+        os.makedirs(destination_folder, exist_ok=True)
+        for i in range(cutimages.size(0)):
+            img = cutimages[i].clamp(0, 1)  # Ensure values are in range [0, 1]
+            img = img.permute(1, 2, 0).cpu().numpy()  # Convert to NumPy array and reorder dimensions
+            img = (img * 255).astype(np.uint8)  # Convert to [0, 255] and uint8
+            
+            # Save image using PIL
+            filename = f"cutmix_{i}{x}.jpg"
+            Image.fromarray(img).save(os.path.join(destination_folder, filename))
+        x+=1
+
 
     criterion, criterion_val = loss.get_loss(args)
     if args.aux_loss:
